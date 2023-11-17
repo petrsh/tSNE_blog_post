@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="en-us">
+
+<head>
+
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="generator" content="Source Themes Academic 4.7.0">
+
+  
+
+  
+  
+  
+  
+  
+    
+    
+    
+  
+  
+
+  <meta name="author" content="Petr Taus">
+
+  
+  
+  
+    
+  
+  <meta name="description" content="This recent preprint and the subsequent discussion on Twitter revealed holes in my understanding of t-distributed stochastic neighbor embedding (t-SNE) and it prompted me to dive deeper into the t-SNE algorithm and try to really understand the math behind it. In the spirit of the saying “when one teaches, two learn” I’ll give you an intuitive explanation of how t-SNE works and show you the effects of different t-SNE hyperparameters on the visualization.">
+
+  
+  <link rel="alternate" hreflang="en-us" href="/post/01_tsne_explanation/tsne_explanation/">
+
+  
+
+
+  
+  
+  
+  <meta name="theme-color" content="rgb(0, 136, 204)">
+  
+
+  
+  
+
+  
+  
+  
+  
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/academicons/1.8.6/css/academicons.min.css" integrity="sha256-uFVgMKfistnJAfoCUQigIl+JfUaP47GrRKjf6CTPVmw=" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.0-1/css/all.min.css" integrity="sha256-4w9DunooKSr3MFXHXWyFER38WmPdm361bQS/2KUWZbU=" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.css" integrity="sha256-Vzbj7sDDS/woiFS3uNKo8eIuni59rjyNGtXfstRzStA=" crossorigin="anonymous">
+
+    
+    
+    
+      
+    
+    
+      
+      
+        
+          <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.15.10/styles/github.min.css" crossorigin="anonymous" title="hl-light" disabled>
+          <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.15.10/styles/dracula.min.css" crossorigin="anonymous" title="hl-dark">
+        
+      
+    
+
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.5.1/leaflet.css" integrity="sha256-SHMGCYmST46SoyGgo4YR/9AlK1vf3ff84Aq9yK4hdqM=" crossorigin="anonymous">
+    
+
+    
+
+    
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/lazysizes/5.1.2/lazysizes.min.js" integrity="sha256-Md1qLToewPeKjfAHU1zyPwOutccPAm5tahnaw7Osw0A=" crossorigin="anonymous" async></script>
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+        
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+
+  
+
+  
+  
+  
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Montserrat:400,700%7CRoboto:400,400italic,700%7CRoboto+Mono&display=swap">
+  
+
+  
+  
+  
+  
+  <link rel="stylesheet" href="/css/academic.css">
+
+  
+
+
+
+
+  
+
+
+  
+
+  <link rel="manifest" href="/index.webmanifest">
+  <link rel="icon" type="image/png" href="/images/icon_hu0b7a4cb9992c9ac0e91bd28ffd38dd00_9727_32x32_fill_lanczos_center_2.png">
+  <link rel="apple-touch-icon" type="image/png" href="/images/icon_hu0b7a4cb9992c9ac0e91bd28ffd38dd00_9727_192x192_fill_lanczos_center_2.png">
+
+  <link rel="canonical" href="/post/01_tsne_explanation/tsne_explanation/">
+
+  
+  
+  
+  
+  
+    
+    
+  
+  
+  <meta property="twitter:card" content="summary">
+  
+  <meta property="twitter:site" content="@petr_taus">
+  <meta property="twitter:creator" content="@petr_taus">
+  
+  <meta property="og:site_name" content="Petr Taus">
+  <meta property="og:url" content="/post/01_tsne_explanation/tsne_explanation/">
+  <meta property="og:title" content="Understanding t-SNE for visualization of scRNA-seq data with examples in R | Petr Taus">
+  <meta property="og:description" content="This recent preprint and the subsequent discussion on Twitter revealed holes in my understanding of t-distributed stochastic neighbor embedding (t-SNE) and it prompted me to dive deeper into the t-SNE algorithm and try to really understand the math behind it. In the spirit of the saying “when one teaches, two learn” I’ll give you an intuitive explanation of how t-SNE works and show you the effects of different t-SNE hyperparameters on the visualization."><meta property="og:image" content="img/map[gravatar:%!s(bool=false) shape:circle]">
+  <meta property="twitter:image" content="img/map[gravatar:%!s(bool=false) shape:circle]"><meta property="og:locale" content="en-us">
+  
+    
+      <meta property="article:published_time" content="2020-01-26T00:00:00&#43;00:00">
+    
+    <meta property="article:modified_time" content="2020-01-26T00:00:00&#43;00:00">
+  
+
+  
+
+
+    
+
+
+
+
+
+
+  
+
+
+
+
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/post/01_tsne_explanation/tsne_explanation/"
+  },
+  "headline": "Understanding t-SNE for visualization of scRNA-seq data with examples in R",
+  
+  "datePublished": "2020-01-26T00:00:00Z",
+  "dateModified": "2020-01-26T00:00:00Z",
+  
+  "author": {
+    "@type": "Person",
+    "name": "Petr Taus"
+  },
+  
+  "publisher": {
+    "@type": "Organization",
+    "name": "Petr Taus",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "img//"
+    }
+  },
+  "description": "This recent preprint and the subsequent discussion on Twitter revealed holes in my understanding of t-distributed stochastic neighbor embedding (t-SNE) and it prompted me to dive deeper into the t-SNE algorithm and try to really understand the math behind it. In the spirit of the saying “when one teaches, two learn” I’ll give you an intuitive explanation of how t-SNE works and show you the effects of different t-SNE hyperparameters on the visualization."
+}
+</script>
+
+  
+
+  
+
+
+  
+
+
+  
+
+
+
+
+
+  <title>Understanding t-SNE for visualization of scRNA-seq data with examples in R | Petr Taus</title>
+
+</head>
+
+<body id="top" data-spy="scroll" data-offset="70" data-target="#TableOfContents" class="dark">
+
+  <aside class="search-results" id="search">
+  <div class="container">
+    <section class="search-header">
+
+      <div class="row no-gutters justify-content-between mb-3">
+        <div class="col-6">
+          <h1>Search</h1>
+        </div>
+        <div class="col-6 col-search-close">
+          <a class="js-search" href="#"><i class="fas fa-times-circle text-muted" aria-hidden="true"></i></a>
+        </div>
+      </div>
+
+      <div id="search-box">
+        
+        <input name="q" id="search-query" placeholder="Search..." autocapitalize="off"
+        autocomplete="off" autocorrect="off" spellcheck="false" type="search">
+        
+      </div>
+
+    </section>
+    <section class="section-search-results">
+
+      <div id="search-hits">
+        
+      </div>
+
+    </section>
+  </div>
+</aside>
+
+
+  
+
+
+
+
+
+
+
+<nav class="navbar navbar-expand-lg navbar-light compensate-for-scrollbar" id="navbar-main">
+  <div class="container">
+
+    
+    <div class="d-none d-lg-inline-flex">
+      <a class="navbar-brand" href="/">Petr Taus</a>
+    </div>
+    
+
+    
+    <button type="button" class="navbar-toggler" data-toggle="collapse"
+            data-target="#navbar-content" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
+    <span><i class="fas fa-bars"></i></span>
+    </button>
+    
+
+    
+    <div class="navbar-brand-mobile-wrapper d-inline-flex d-lg-none">
+      <a class="navbar-brand" href="/">Petr Taus</a>
+    </div>
+    
+
+    
+    
+    <div class="navbar-collapse main-menu-item collapse justify-content-start" id="navbar-content">
+
+      
+      <ul class="navbar-nav d-md-inline-flex">
+        
+
+        
+
+        
+        
+        
+          
+        
+
+        
+        
+        
+        
+        
+        
+          
+          
+          
+            
+          
+          
+        
+
+        <li class="nav-item">
+          <a class="nav-link " href="/#posts"><span>Posts</span></a>
+        </li>
+
+        
+        
+
+        
+
+        
+        
+        
+          
+        
+
+        
+        
+        
+        
+        
+        
+          
+          
+          
+            
+          
+          
+        
+
+        <li class="nav-item">
+          <a class="nav-link " href="/#contact"><span>Contact</span></a>
+        </li>
+
+        
+        
+
+      
+
+        
+      </ul>
+    </div>
+
+    <ul class="nav-icons navbar-nav flex-row ml-auto d-flex pl-md-2">
+      
+      <li class="nav-item">
+        <a class="nav-link js-search" href="#"><i class="fas fa-search" aria-hidden="true"></i></a>
+      </li>
+      
+
+      
+      <li class="nav-item">
+        <a class="nav-link js-dark-toggle" href="#"><i class="fas fa-moon" aria-hidden="true"></i></a>
+      </li>
+      
+
+      
+
+    </ul>
+
+  </div>
+</nav>
+
+
+  <article class="article">
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+  
+  
+<div class="article-container pt-3">
+  <h1>Understanding t-SNE for visualization of scRNA-seq data with examples in R</h1>
+
+  
+
+  
+    
+
+
+<div class="article-metadata">
+
+  
+  
+
+  
+  <span class="article-date">
+    
+    
+      
+    
+    Jan 26, 2020
+  </span>
+  
+
+  
+
+  
+  <span class="middot-divider"></span>
+  <span class="article-reading-time">
+    13 min read
+  </span>
+  
+
+  
+  
+  
+
+  
+  
+  <span class="middot-divider"></span>
+  <span class="article-categories">
+    <i class="fas fa-folder mr-1"></i><a href="/categories/r/">R</a></span>
+  
+
+</div>
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+</div>
+
+
+
+  <div class="article-container">
+
+    <div class="article-style">
+      
+
+
+<p><a href="https://www.biorxiv.org/content/10.1101/2019.12.19.877522v1">This recent preprint</a> and the subsequent <a href="https://twitter.com/hippopedoid/status/1207999178015727616">discussion on Twitter</a> revealed holes in my understanding of t-distributed stochastic neighbor embedding (t-SNE) and it prompted me to dive deeper into the t-SNE algorithm and try to really understand the math behind it. In the spirit of the saying “when one teaches, two learn” I’ll give you an intuitive explanation of how t-SNE works and show you the effects of different t-SNE hyperparameters on the visualization. (By an intuitive explanation, I mean, I won’t use any formulas to explain things.)<br />
+      Visualization tools are necessary to reveal patterns and the structure of dimensional data created by high-throughput technologies such as single-cell RNA-sequencing (scRNA-seq). The idea behind these tools is to make a 2D/3D plot in which distances between points represent underlying relationships in the original data. In practice, it is impossible to preserve all pairwise distances and thus the methods have to compromise which distances to preserve, and which to ignore. For example, t-SNE preserves local structure quite well, but global structure quite poorly. In the case of Principal Component Analysis (PCA) it’s the opposite.<br />
+      Stochastic neighbor embedding (SNE), a method for visualization of high-dimensional data, was introduced in <a href="https://www.cs.toronto.edu/~fritz/absps/sne.pdf">2002 by Hinton and Roweis</a>. The algorithm starts by calculating the conditional probabilities that, for example, point A would pick point B as its neighbor if they were chosen in proportion to their probability density under a Gaussian (normal distribution) centered at A (Fig. 1.).</p>
+<p><img src="/post/01_tsne_explanation/figure_1.png" width="80%" style="display: block; margin: auto;" /></p>
+<p>Fig. 1. A hypothetical example of perfect low-dimensional embedding of seven points (blue) from a high-dimensional space. Circles represent Gaussian with different perplexity parameters (P1 and P2).</p>
+<p>      These conditional probabilities are basically the converted high-dimensional Euclidean distances between the data points. It is possible to calculate the same probabilities for the low-dimensional counterparts of the high-dimensional datapoints and then measure the discrepancy between these probabilities. To measure the discrepancy between the similarities in the data and in the plot we need some objective function. In SNE this it’s Kullback-Leibler (KL) divergence and a nice intuitive explanation can be found <a href="https://www.countbayesie.com/blog/2017/5/9/kullback-leibler-divergence-explained">here</a>. The algorithm then aims at finding such representation of low-dimensional data points that minimizes the total sum of the discrepancies (for this it uses a gradient descent method). The KL divergence is the reason why SNE mainly preserves small pairwise distances (ie. local similarity structure of the data, and it’s happening due to the fact that KL divergence gives a big penalty when two very similar points in high-dimensional space are embedded far apart in low-dimensional space but not vice versa. If you check the formula in the <a href="https://www.cs.toronto.edu/~fritz/absps/sne.pdf">original paper</a> you can easily understand why (I promised no formulas here)).<br />
+      t-SNE was developed in <a href="http://www.jmlr.org/papers/volume9/vandermaaten08a/vandermaaten08a.pdf">2008 by Maaten and Hinton</a> and is based on the same idea as SNE. However, SNE suffers from something called ‘crowding problem’. For example, in 2D a point can have more neighbors in the same distance but imagine what happens when they embed in 1D. Exactly! Not enough room for all neighbors. This was solved in t-SNE by replacing the Gaussian with the Student’s t-distribution (therefore t-distributed SNE) to measure similarities in the low-dimensional space (in the heavy tailed Student’s t-distribution probability goes to zero slower than a Gaussian which “opens up more space for embedding”).<br />
+      One of the weaknesses of t-SNE is that it fails to preserve the global structure of the data. In <a href="https://www.nature.com/articles/nbt.4314">2019 Becht et al.</a> suggested to use UMAP instead of t-SNE for an analysis of scRNA-seq data since they found UMAP to be superior at preserving the global distances. However, in a recent <a href="https://www.biorxiv.org/content/10.1101/2019.12.19.877522v1">preprint</a>, Kobak and Linderman demonstrated that this happened because of different initializations used for t-SNE (random initialization) and UMAP (initialization with Laplacian eigenmaps).<br />
+      In the reaction on this preprint <a href="https://towardsdatascience.com/why-umap-is-superior-over-tsne-faa039c28e99">here</a> the author claims “As long as tSNE uses the KL divergence as a cost function, it cannot even in theory preserve global distances”. However, the results of Kobak and Linderman’s preprint look quite convincing. My conclusion is that if you use t-SNE with suitable initialization and set the proper parameters, its performance is comparable to UMAP. In my opinion, the minor advantage of t-SNE over UMAP is that it doesn’t use as much white space in plots as UMAP does (example below in the Experimental playground).</p>
+<div id="t-sne-hyperparameters" class="section level2">
+<h2>t-SNE hyperparameters</h2>
+<div id="perplexity" class="section level3">
+<h3>Perplexity</h3>
+<p>From the original paper: “The perplexity can be interpreted as a smooth measure of the effective number of neighbors. The performance of SNE is fairly robust to changes in the perplexity, and typical values are between 5 and 50.“ Perplexity basically controls the width of the Gaussian kernel (Fig. 1.) and it can be said that it is dependent on the size of the dataset in the sense that large datasets require a larger perplexity. For example, <a href="https://towardsdatascience.com/how-to-tune-hyperparameters-of-tsne-7c0596a18868">here</a> the author suggests to use perplexity = N**(1/2) where N is the number of samples in the dataset. An alternative strategy is to use a multi-scale approach (ie. using multiple perplexity values at the same time) as it might preserve both local and global structure better.</p>
+</div>
+<div id="number-of-pcs" class="section level3">
+<h3>Number of PCs</h3>
+<p>T-SNE has difficulty with high-dimensional data, therefore, it’s recommended to reduce dimensionality before analysis - for example with PCA - and using principal components (PCs) as the input for t-SNE. The question is how to select the optimal number of PCs? The default number of PCs to use for t-SNE in Rtsne R package is 50 and the same number was used by the authors <a href="https://www.nature.com/articles/s41467-019-13056-x">here</a>, arguing that the number of PCs doesn’t have much influence on t-SNE results. However, if you don’t select enough PCs you might lose the signal from the data, and on the contrary, with too many PCs you’ll include noise from the data. Thus, a more sophisticated approach to deciding how to select a number of significant PCs is via shuffling (more on this topic below in the Experimental playground).</p>
+</div>
+<div id="learning-rate" class="section level3">
+<h3>Learning rate</h3>
+<p>With this parameter, you can control how quickly the algorithm searches for the best solution. A low learning rate will cause the algorithm to search slowly and very carefully, however, it might get stuck in a local optimal solution. With a high learning rate the algorithm might never be able to find the best solution. The learning rate should be tuned based on the size of the dataset. <a href="https://www.nature.com/articles/s41467-019-13056-x">Here</a> they suggest using learning rate = N/12.</p>
+</div>
+<div id="initialization" class="section level3">
+<h3>Initialization</h3>
+<p>Random initialization of t-SNE is a default option in the implementation of t-SNE in the Rtsne R package. However, when using random initialization, you have to set a random seed for reproducibility and the results then highly depend on that. Another approach that I will demonstrate is to use PCA initialization which makes the outcome of t-SNE reproducible and not dependent on a random seed.</p>
+</div>
+</div>
+<div id="experimental-playground" class="section level2">
+<h2>Experimental playground</h2>
+<div id="small-dataset" class="section level3">
+<h3>Small dataset</h3>
+<p>I chose an scRNA-seq dataset of developing adrenomedullary cells at embryonic day 12.5 (E12.5) containing 385 cells. This dataset comes from <a href="https://science.sciencemag.org/content/357/6346/eaal3753">(Furlan et al., 2017)</a> who described the developmental trajectory of chromaffin cells which are located in the adrenal medulla and are the main producers of adrenalin and noraderanlin in the body. Very briefly, they found out that the majority of chromaffin cells arise from cells of neural origin. They follow the trajectory: Schwann cell precursors (=peripheral glial stem cells, SCPs) –&gt; they migrate along the preganglionic nerves from the dorsal root ganglia of the spine to the adrenal gland –&gt; in the adrenal gland the cells differentiate into the chromaffin cells.<br />
+      Thanks to scRNA-seq the authors unraveled the gene expression program responsible for SCP to chromaffin cell transition. The original t-SNE visualization and results of clustering of scRNA-seq at E12.5 are shown below (Fig. 2.).</p>
+<p><img src="/post/01_tsne_explanation/E12_5_orig.png" width="50%" style="display: block; margin: auto;" /></p>
+<p>Fig. 2. t-SNE visualization and results of clustering of scRNA-seq at E12.5 from <a href="https://science.sciencemag.org/content/357/6346/eaal3753">(Furlan et al., 2017)</a>. The blue cluster represents SCPs, green one chromaffin cells and purple one sympathoblasts. Red and yellow one represent intermediate cell subpopulations and the difference between them is present due to differences in cell cycle phase.</p>
+<p>      In the publication, the data were processed using <a href="https://hms-dbmi.github.io/scde/">SCDE R package</a>. It fits individual error models for scRNA-seq measurements which is great, but computationally expensive. Instead of that I performed normalization by deconvolution and feature selection based on biological components of the per-gene variance. It left me with 6114 genes as the input for PCA. On the plot of the first two PCs below you can already see a structure quite similar to the original t-SNE.</p>
+<pre class="r"><code>E12.5 &lt;- readr::read_delim(&quot;GSE99933_E12.5_counts.txt&quot;, delim = &quot;\t&quot;)
+names_E12.5 &lt;- E12.5[,1]
+E12.5 &lt;- E12.5[,-1]
+E12.5 &lt;- as.matrix(E12.5)
+rownames(E12.5) &lt;- names_E12.5$rnames
+rm(names_E12.5)
+
+# remove low-gene cells
+keep &lt;- colSums(E12.5) &gt; 1e5
+E12.5 &lt;- E12.5[,keep] 
+# filter out genes that don&#39;t have many reads
+keep &lt;- rowSums(E12.5) &gt; 10
+E12.5 &lt;- E12.5[keep,]
+# remove genes with low occurence
+keep &lt;- rowSums(E12.5&gt;0) &gt; 5
+E12.5 &lt;- E12.5[keep,]
+
+set.seed(42)
+E12.5_qClust&lt;- quickCluster(E12.5, min.size = 20, method = &quot;igraph&quot;)
+E12.5_sf &lt;- computeSumFactors(E12.5, clusters=E12.5_qClust)
+E12.5_norm &lt;- normalizeCounts(E12.5, E12.5_sf, centre_size_factors=T)
+
+### feature selection
+var_E12.5_norm &lt;- trendVar(E12.5_norm, method = &quot;spline&quot;)
+dec_E12.5_norm &lt;- decomposeVar(E12.5_norm,var_E12.5_norm)
+dec_E12.5_norm &lt;- dec_E12.5_norm[order(dec_E12.5_norm$bio, decreasing = T),]
+bias_min_genes &lt;- rownames(dec_E12.5_norm[dec_E12.5_norm$bio &gt; 0,])
+E12.5_norm_filt &lt;- E12.5_norm[bias_min_genes,]
+
+### PCA
+PCs_E12.5_filt &lt;- prcomp(t(E12.5_norm_filt), center = T, scale. = T)
+plot(PCs_E12.5_filt$x[,1:2])</code></pre>
+<p><img src="/post/01_tsne_explanation/tsne_explanation_files/figure-html/unnamed-chunk-4-1.png" width="480" style="display: block; margin: auto;" /></p>
+<p>      Then I aimed at finding significant PCs by comparing the observed variance explained by PCs with permuted variance. For this I borrowed the idea from <a href="https://gist.github.com/NikolayOskolkov/fb265e3b3c443bd2dc10461430875b1f#file-findsignpcs-r">Nikolay Oskolkov</a>. The red line represents variance explained by chance and the black line variance explained by PCs (on the left figure).</p>
+<pre class="r"><code>expl_var &lt;- PCs_E12.5_filt$sdev^2/sum(PCs_E12.5_filt$sdev^2)
+N_perm &lt;- 10
+expl_var_perm &lt;- matrix(NA, ncol = length(PCs_E12.5_filt$sdev), nrow = N_perm)
+for(k in 1:N_perm){
+  expr_perm &lt;- apply(E12.5_norm_filt,2,sample)
+  PC_perm &lt;- prcomp(t(expr_perm), center=TRUE, scale=TRUE)
+  expl_var_perm[k,] &lt;- PC_perm$sdev^2/sum(PC_perm$sdev^2)
+}
+tmp_df1 &lt;- data.frame(explained_variance = expl_var[1:50], PCs = seq(1:50),
+                      var_perm = colMeans(expl_var_perm)[1:50])
+gp1 &lt;- ggplot(tmp_df1) +
+        geom_point(aes(PCs, explained_variance, shape = &quot;.&quot; )) +
+        geom_line(aes(PCs, explained_variance)) +
+        geom_point(aes(PCs, var_perm, colour = &quot;red&quot;, shape = &quot;.&quot;)) +
+        geom_line(aes(PCs, var_perm, colour = &quot;red&quot;)) +
+        ggthemes::theme_tufte() +
+        theme(legend.position = &quot;none&quot;)
+
+pval &lt;- apply(t(expl_var_perm) &gt;= expl_var,1,sum) / N_perm
+optPC &lt;- head(which(pval&gt;=0.05),1)-1
+tmp_df2 &lt;- data.frame(p_value = pval[1:50], PCs = seq(1:50))
+gp2 &lt;- ggplot(tmp_df2, aes(PCs, p_value, shape = &quot;.&quot;)) +
+        geom_point() +
+        geom_line() +
+        ggthemes::theme_tufte() +
+        ggtitle(paste(&quot;optimal number of PCs = &quot;, optPC)) +
+        theme(legend.position = &quot;none&quot;)</code></pre>
+<p><img src="/post/01_tsne_explanation/tsne_explanation_files/figure-html/unnamed-chunk-6-1.png" width="672" style="display: block; margin: auto;" /></p>
+<p>      Then I performed t-SNE using <a href="https://github.com/KlugerLab/FIt-SNE">FIt-SNE R package</a> which stands for Fast Fourier Transform-accelerated Interpolation-based t-SNE. The implementation of t-SNE in commonly used Rtsne R package is based on Barnes-Hut approximation which reduces quadratic computational complexity to logarithmic. This implementation is reasonably fast for datasets up to ~ 100,000 cells. FIt-SNE has linear computational complexity and therefore is useful for bigger datasets. Here I chose FIt-SNE over Rtsne because it provides additional features such as combination of perplexities.(Warning: the installation of this package into R running on the server might be cumbersome because of its prerequisite)<br />
+      I used the first 13 significant PCs as input for t-SNE, adjusted two first PCs for initialization (the algorithm needs values used for initialization to be close to zero, explained <a href="https://jlmelville.github.io/smallvis/init.html">here</a> why), learning rate = N/12 and perplexity values = N**(1/2) and 30.</p>
+<pre class="r"><code>g &lt;- buildSNNGraph(PCs_E12.5_filt$x[,1:13], type=&quot;number&quot;, 
+                   d = NA, transposed = T)
+g_k30 &lt;- buildSNNGraph(PCs_E12.5_filt$x[,1:13], type=&quot;number&quot;, 
+                       d = NA, transposed = T, k = 30)
+
+clust.louvain.numb &lt;- igraph::cluster_louvain(g)$membership
+clust.louvain.numb_k30 &lt;- igraph::cluster_louvain(g_k30)$membership
+
+###
+PCs_E12.5_filt_adj &lt;- PCs_E12.5_filt$x[,1:2]/sd(PCs_E12.5_filt$x[,1])*0.0001
+
+source(&quot;FIt-SNE/fast_tsne.R&quot;, chdir=T)
+pokus &lt;- fftRtsne(PCs_E12.5_filt$x[,1:13], 
+                  initialization = PCs_E12.5_filt_adj,
+                  learning_rate = 369/12,
+                  perplexity = 0,
+                  perplexity_list = c(369**0.5,30))</code></pre>
+<pre class="r"><code>tsne_A &lt;- as.data.frame(pokus) 
+g1 &lt;- ggplot(tsne_A, aes(V1,V2, shape = &quot;.&quot;)) +
+  geom_point(aes(color = as.factor(clust.louvain.numb))) +
+  ggthemes::theme_tufte() +
+  theme(legend.position = &quot;none&quot;, axis.title = element_blank())
+
+g2 &lt;- ggplot(tsne_A, aes(V1,V2, shape = &quot;.&quot;)) +
+  geom_point(aes(color = as.factor(clust.louvain.numb_k30))) +
+  ggthemes::theme_tufte() +
+  theme(legend.position = &quot;none&quot;, axis.title = element_blank())</code></pre>
+<p>      Here you can see the outcome, coloured based on the results of graph-based clustering with different parameter k specifying the number of nearest neighbors to consider during graph construction (I’m planning to write more about different clustering methods for scRNA-seq in my next post). <img src="/post/01_tsne_explanation/tsne_explanation_files/figure-html/unnamed-chunk-9-1.png" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>pokus &lt;- fftRtsne(PCs_E12.5_filt$x[,1:13], 
+                  initialization = PCs_E12.5_filt_adj,
+                  learning_rate = 369/12,
+                  perplexity = 0,
+                  perplexity_list = c(10,369**0.5))
+
+tsne_B &lt;- as.data.frame(pokus) 
+g3 &lt;- ggplot(tsne_B, aes(V1,V2, shape = &quot;.&quot;)) +
+      geom_point(aes(color = as.factor(clust.louvain.numb_k30))) +
+      ggthemes::theme_tufte() +
+      theme(legend.position = &quot;none&quot;, axis.title = element_blank())
+
+pokus &lt;- fftRtsne(PCs_E12.5_filt$x[,1:13], 
+                  initialization = PCs_E12.5_filt_adj,
+                  learning_rate = 369/12,
+                  perplexity = 0,
+                  perplexity_list = c(10,369**0.5,30))
+
+tsne_C &lt;- as.data.frame(pokus) 
+g4 &lt;- ggplot(tsne_C, aes(V1,V2, shape = &quot;.&quot;)) +
+      geom_point(aes(color = as.factor(clust.louvain.numb_k30))) +
+      ggthemes::theme_tufte() +
+      theme(legend.position = &quot;none&quot;, axis.title = element_blank())</code></pre>
+<p>      Here t-SNE was run as described above but with perplexity values = 10 and N**(1/2) on the left and 10, N**(1/2) and 30 on the right.</p>
+<p><img src="/post/01_tsne_explanation/tsne_explanation_files/figure-html/unnamed-chunk-11-1.png" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>set.seed(42)
+pokus &lt;- fftRtsne(PCs_E12.5_filt$x[,1:50],
+                  learning_rate = 200,
+                  perplexity = 30)
+
+tsne_E &lt;- as.data.frame(pokus) 
+g5 &lt;- ggplot(tsne_E, aes(V1,V2, shape = &quot;.&quot;)) +
+      geom_point(aes(color = as.factor(clust.louvain.numb_k30))) +
+      ggthemes::theme_tufte() +
+      theme(legend.position = &quot;none&quot;, axis.title = element_blank())
+
+set.seed(101010)
+pokus &lt;- fftRtsne(PCs_E12.5_filt$x[,1:50],
+                  learning_rate = 200,
+                  perplexity = 30)
+
+tsne_F &lt;- as.data.frame(pokus) 
+g6 &lt;- ggplot(tsne_F, aes(V1,V2, shape = &quot;.&quot;)) +
+      geom_point(aes(color = as.factor(clust.louvain.numb_k30))) +
+      ggthemes::theme_tufte() +
+      theme(legend.position = &quot;none&quot;, axis.title = element_blank())</code></pre>
+<p>      Here I performed t-SNE with commonly used default settings i.e. the first 50 PCs as input, learning rate = 200, perplexity = 30 and random initialization. T-SNE outcomes on the left and right differ in random seed used for initialization.</p>
+<p><img src="/post/01_tsne_explanation/tsne_explanation_files/figure-html/unnamed-chunk-13-1.png" width="672" style="display: block; margin: auto;" /></p>
+<p>      A special feature of Rtsne function from Rtsne package is that you can use the distance matrix as the input. I gave it a try - see below. I used PCA initialization, perplexity = N**1/2 and learning rate = N/12.</p>
+<pre class="r"><code>d &lt;- as.dist(1-cor(E12.5_norm_filt))
+
+tsne_dist &lt;- Rtsne(d, is_distance = TRUE, verbose = F, num_threads=2, 
+                   perplexity = 369**0.5, Y_init = PCs_E12.5_filt_adj, 
+                   eta = 369/12) 
+tsne_dist &lt;- as.data.frame(tsne_dist$Y) 
+ggplot(tsne_dist, aes(V1,V2, shape = &quot;.&quot;)) +
+          geom_point(aes(color = as.factor(clust.louvain.numb_k30))) +
+          ggthemes::theme_tufte() +
+          theme(legend.position = &quot;none&quot;, axis.title = element_blank())</code></pre>
+<p><img src="/post/01_tsne_explanation/tsne_explanation_files/figure-html/unnamed-chunk-14-1.png" width="288" style="display: block; margin: auto;" /></p>
+</div>
+<div id="larger-dataset" class="section level3">
+<h3>Larger dataset</h3>
+<p>Here I performed t-SNE on a scRNA-seq dataset of chimeric mouse embryos containing 16349 cells and compared it with UMAP.</p>
+<pre class="r"><code># library(Seurat)
+# library(SingleCellExperiment)
+library(uwot)</code></pre>
+<pre class="r"><code># E_MTAB_7324 &lt;- Read10X(&quot;.&quot;)
+# ser_E_MTAB_7324 &lt;- CreateSeuratObject(E_MTAB_7324)
+# ser_E_MTAB_7324 &lt;- FindVariableFeatures(ser_E_MTAB_7324)
+# ser_E_MTAB_7324 &lt;- ScaleData(ser_E_MTAB_7324)
+# ser_E_MTAB_7324 &lt;- RunPCA(ser_E_MTAB_7324)
+# SCE_E_MTAB_7324 &lt;- as.SingleCellExperiment(ser_E_MTAB_7324)
+# PCs &lt;- reducedDim(SCE_E_MTAB_7324)</code></pre>
+<p>      I downloaded normalized data from <a href="https://www.ebi.ac.uk/arrayexpress/experiments/E-MTAB-7324/">here</a> and directly applied PCA (normally you have to do some QC before that and filter out low quality cells). I used the function RunPCA from <a href="https://satijalab.org/seurat/">Seurat R package</a> that uses approximation to speed up PCA and directly fed t-SNE algorithm with first 50 PCs.</p>
+<pre class="r"><code>PCs &lt;- read.csv(&quot;dataset/E-MTAB-7324-normalised-files/PCs.csv&quot;, row.names = 1)
+plot(PCs[,1:2])</code></pre>
+<p><img src="/post/01_tsne_explanation/tsne_explanation_files/figure-html/unnamed-chunk-17-1.png" width="480" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>g &lt;- buildSNNGraph(PCs, type=&quot;number&quot;, d = NA, transposed = T)
+clust.louvain.numb &lt;- igraph::cluster_louvain(g)$membership
+
+PCs_adj &lt;- PCs[,1:2]/sd(PCs[,1])*0.0001
+source(&quot;FIt-SNE/fast_tsne.R&quot;, chdir=T)
+PCs &lt;- as.matrix(PCs)
+pokus &lt;- fftRtsne(PCs, 
+                  initialization = PCs_adj,
+                  learning_rate = dim(PCs)[1]/12,
+                  perplexity = 0,
+                  perplexity_list = c(30,dim(PCs)[1]**0.5))
+
+tsne &lt;- as.data.frame(pokus) 
+g1 &lt;- ggplot(tsne, aes(V1,V2)) +
+      geom_point(aes(color = as.factor(clust.louvain.numb), alpha = 0.05,  shape = &quot;.&quot;)) +
+      ggthemes::theme_tufte() +
+      theme(legend.position = &quot;none&quot;, axis.title = element_blank())
+
+set.seed(42)
+pokus &lt;- fftRtsne(PCs,
+                  learning_rate = dim(PCs)[1]/12,
+                  perplexity = 0,
+                  perplexity_list = c(30,dim(PCs)[1]**0.5))
+
+
+tsne2 &lt;- as.data.frame(pokus) 
+g2 &lt;- ggplot(tsne2, aes(V1,V2)) +
+      geom_point(aes(color = as.factor(clust.louvain.numb), alpha = 0.05,  shape = &quot;.&quot;)) +
+      ggthemes::theme_tufte() +
+      theme(legend.position = &quot;none&quot;, axis.title = element_blank())</code></pre>
+<p>      For both t-SNE runs I set the following hyperparameters: learning rate = N/12 and the combination of perplexity values 30 and N**(1/2). T-SNE on the left was initialized with the firs two PCs (above) and t-SNE on the right was randomly initialized. All t-SNE and UMAP plots are coloured based on the result of graph-based clustering.</p>
+<p><img src="/post/01_tsne_explanation/tsne_explanation_files/figure-html/unnamed-chunk-19-1.png" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>set.seed(42)
+umap &lt;- umap(PCs)
+umap &lt;- as.data.frame(umap)
+g3 &lt;- ggplot(umap, aes(V1,V2)) +
+      geom_point(aes(color = as.factor(clust.louvain.numb), alpha = 0.05, shape = &quot;.&quot;)) +
+      ggthemes::theme_tufte() +
+      theme(legend.position = &quot;none&quot;, axis.title = element_blank())
+
+set.seed(42)
+umap &lt;- umap(PCs, 50)
+umap &lt;- as.data.frame(umap)
+g4 &lt;- ggplot(umap, aes(V1,V2, shape = &quot;.&quot;)) +
+      geom_point(aes(color = as.factor(clust.louvain.numb), alpha = 0.05, shape = &quot;.&quot;)) +
+      ggthemes::theme_tufte() +
+      theme(legend.position = &quot;none&quot;, axis.title = element_blank())</code></pre>
+<p>      Here I performed UMAP using the umap function from <a href="https://github.com/jlmelville/uwot">uwot R package</a>. I kept default settings and only changed the hyperparameter “n_neighbors” to 50 for UMAP on the right. This parameter is similar to perplexity in t-SNE.</p>
+<p><img src="/post/01_tsne_explanation/tsne_explanation_files/figure-html/unnamed-chunk-21-1.png" width="672" style="display: block; margin: auto;" /></p>
+</div>
+</div>
+
+    </div>
+
+    
+
+
+
+
+
+<div class="article-tags">
+  
+  <a class="badge badge-light" href="/tags/r-markdown/">R Markdown</a>
+  
+  <a class="badge badge-light" href="/tags/scrna-seq/">scRNA-seq</a>
+  
+  <a class="badge badge-light" href="/tags/dimensionality-reduction/">dimensionality reduction</a>
+  
+</div>
+
+
+
+<div class="share-box" aria-hidden="true">
+  <ul class="share">
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="https://twitter.com/intent/tweet?url=/post/01_tsne_explanation/tsne_explanation/&amp;text=Understanding%20t-SNE%20for%20visualization%20of%20scRNA-seq%20data%20with%20examples%20in%20R" target="_blank" rel="noopener" class="share-btn-twitter">
+          <i class="fab fa-twitter"></i>
+        </a>
+      </li>
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="https://www.facebook.com/sharer.php?u=/post/01_tsne_explanation/tsne_explanation/&amp;t=Understanding%20t-SNE%20for%20visualization%20of%20scRNA-seq%20data%20with%20examples%20in%20R" target="_blank" rel="noopener" class="share-btn-facebook">
+          <i class="fab fa-facebook"></i>
+        </a>
+      </li>
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="mailto:?subject=Understanding%20t-SNE%20for%20visualization%20of%20scRNA-seq%20data%20with%20examples%20in%20R&amp;body=/post/01_tsne_explanation/tsne_explanation/" target="_blank" rel="noopener" class="share-btn-email">
+          <i class="fas fa-envelope"></i>
+        </a>
+      </li>
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="https://www.linkedin.com/shareArticle?url=/post/01_tsne_explanation/tsne_explanation/&amp;title=Understanding%20t-SNE%20for%20visualization%20of%20scRNA-seq%20data%20with%20examples%20in%20R" target="_blank" rel="noopener" class="share-btn-linkedin">
+          <i class="fab fa-linkedin-in"></i>
+        </a>
+      </li>
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="https://web.whatsapp.com/send?text=Understanding%20t-SNE%20for%20visualization%20of%20scRNA-seq%20data%20with%20examples%20in%20R%20/post/01_tsne_explanation/tsne_explanation/" target="_blank" rel="noopener" class="share-btn-whatsapp">
+          <i class="fab fa-whatsapp"></i>
+        </a>
+      </li>
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="https://service.weibo.com/share/share.php?url=/post/01_tsne_explanation/tsne_explanation/&amp;title=Understanding%20t-SNE%20for%20visualization%20of%20scRNA-seq%20data%20with%20examples%20in%20R" target="_blank" rel="noopener" class="share-btn-weibo">
+          <i class="fab fa-weibo"></i>
+        </a>
+      </li>
+    
+  </ul>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+  
+  
+  
+    
+  
+  
+  
+  <div class="media author-card content-widget-hr">
+    
+      
+      <img class="avatar mr-3 avatar-circle" src="/authors/admin/avatar_hue5f5722895006aa07188896f663dc4f4_598869_270x270_fill_q90_lanczos_center.jpg" alt="Avatar">
+    
+
+    <div class="media-body">
+      <h5 class="card-title"><a href="/">Petr Taus</a></h5>
+      <h6 class="card-subtitle">PhD student</h6>
+      <p class="card-text">matter.</p>
+      <ul class="network-icon" aria-hidden="true">
+  
+    
+    
+    
+      
+    
+    
+    
+    
+    
+      
+    
+    <li>
+      <a href="/#contact" >
+        <i class="fas fa-envelope"></i>
+      </a>
+    </li>
+  
+    
+    
+    
+      
+    
+    
+    
+    
+    
+      
+    
+    <li>
+      <a href="https://twitter.com/GeorgeCushen" target="_blank" rel="noopener">
+        <i class="fab fa-twitter"></i>
+      </a>
+    </li>
+  
+</ul>
+
+    </div>
+  </div>
+
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+  </div>
+</article>
+
+      
+
+    
+    
+    
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.imagesloaded/4.1.4/imagesloaded.pkgd.min.js" integrity="sha256-lqvxZrPLtfffUl2G/e7szqSvPBILGbwmsGE1MKlOi0Q=" crossorigin="anonymous"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.isotope/3.0.6/isotope.pkgd.min.js" integrity="sha256-CBrpuqrMhXwcLLUd5tvQ4euBHCdh7wGlDfNz8vbu/iI=" crossorigin="anonymous"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.js" integrity="sha256-yt2kYMy0w8AbtF89WXb2P1rfjcP/HTHLT7097U8Y5b8=" crossorigin="anonymous"></script>
+
+      
+
+      
+        
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.15.10/highlight.min.js" integrity="sha256-1zu+3BnLYV9LdiY85uXMzii3bdrkelyp37e0ZyTAQh0=" crossorigin="anonymous"></script>
+        
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.15.10/languages/r.min.js"></script>
+        
+      
+
+    
+
+    
+    
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.5.1/leaflet.js" integrity="sha256-EErZamuLefUnbMBQbsEqu1USa+btR2oIlCpBJbyD4/g=" crossorigin="anonymous"></script>
+    
+
+    
+    
+    <script>const code_highlighting = true;</script>
+    
+
+    
+    
+    
+    
+    
+    
+    <script>
+      const search_config = {"indexURI":"/index.json","minLength":1,"threshold":0.3};
+      const i18n = {"no_results":"No results found","placeholder":"Search...","results":"results found"};
+      const content_type = {
+        'post': "Posts",
+        'project': "Projects",
+        'publication' : "Publications",
+        'talk' : "Talks"
+        };
+    </script>
+    
+
+    
+    
+
+    
+    
+    <script id="search-hit-fuse-template" type="text/x-template">
+      <div class="search-hit" id="summary-{{key}}">
+      <div class="search-hit-content">
+        <div class="search-hit-name">
+          <a href="{{relpermalink}}">{{title}}</a>
+          <div class="article-metadata search-hit-type">{{type}}</div>
+          <p class="search-hit-description">{{snippet}}</p>
+        </div>
+      </div>
+      </div>
+    </script>
+    
+
+    
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/3.2.1/fuse.min.js" integrity="sha256-VzgmKYmhsGNNN4Ph1kMW+BjoYJM2jV5i4IlFoeZA9XI=" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mark.js/8.11.1/jquery.mark.min.js" integrity="sha256-4HLtjeVgH0eIB3aZ9mLYF6E8oU5chNdjU6p6rrXpl9U=" crossorigin="anonymous"></script>
+    
+
+    
+    
+
+    
+    
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+      
+    
+    
+    
+    
+    <script src="/js/academic.min.0630fec5958cb075a5a38f042b3ddde6.js"></script>
+
+    
+
+
+
+
+
+
+  
+  
+  <div class="container">
+    <footer class="site-footer">
+  
+  <p class="powered-by">
+    
+      <a href="/privacy/">Privacy Policy</a>
+    
+    
+       &middot; 
+      <a href="/terms/">Terms</a>
+    
+  </p>
+  
+
+  <p class="powered-by">
+    
+
+    Powered by the
+    <a href="https://sourcethemes.com/academic/" target="_blank" rel="noopener">Academic theme</a> for
+    <a href="https://gohugo.io" target="_blank" rel="noopener">Hugo</a>.
+
+    
+    <span class="float-right" aria-hidden="true">
+      <a href="#" class="back-to-top">
+        <span class="button_icon">
+          <i class="fas fa-chevron-up fa-2x"></i>
+        </span>
+      </a>
+    </span>
+    
+  </p>
+</footer>
+
+  </div>
+  
+
+  
+<div id="modal" class="modal fade" role="dialog">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Cite</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <pre><code class="tex hljs"></code></pre>
+      </div>
+      <div class="modal-footer">
+        <a class="btn btn-outline-primary my-1 js-copy-cite" href="#" target="_blank">
+          <i class="fas fa-copy"></i> Copy
+        </a>
+        <a class="btn btn-outline-primary my-1 js-download-cite" href="#" target="_blank">
+          <i class="fas fa-download"></i> Download
+        </a>
+        <div id="modal-error"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
